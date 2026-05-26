@@ -63,7 +63,8 @@ const DEFAULT_CONFIG = {
   // Editable fairness bullets
   fairness: [
     "More tickets = Higher chance of winning",
-    "Participants can only win once,",
+    "Participants can only win once",
+    "Tickets' winning chances are the same to ensure fairness",
   ],
 };
 
