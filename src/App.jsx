@@ -62,9 +62,20 @@ const DEFAULT_CONFIG = {
   },
   // Editable fairness bullets
   fairness: [
-    "More tickets = Higher chance of winning",
-    "Participants can only win once",
+    "More tickets = Higher chance of winning!",
+    "To ensure fairness and allow more participants to win, we will implement a one winner per person rule for our raffle.",
     "Tickets' winning chances are the same to ensure fairness",
+    "Draw Sequence: 3 Main Prizes then 3 Consolation prizes so stay till the end!",
+    "We will contact the winners after our live event",
+  ],
+  // Prizes per round — each prize has a label and up to 2 poster images (base64)
+  prizes: [
+    { label: "SB Vouchers",                images: [] },
+    { label: "Mini Speaker",               images: [] },
+    { label: "Camera",                     images: [] },
+    { label: "Moisturizer",                images: [] },
+    { label: "100P worth of Regular Load", images: [] },
+    { label: "3pcs 1.5L Soft Drinks",      images: [] },
   ],
 };
 
@@ -609,12 +620,29 @@ function ColorRow({ label, value, onChange }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Main App
 // ═══════════════════════════════════════════════════════════════════════════════
+// ─── Save / Load helpers ─────────────────────────────────────────────────────
+const SAVE_KEY = "raffle_save_v1";
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return data;
+  } catch { return null; }
+}
+function writeSave(data) {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
+}
+
 export default function RaffleApp() {
-  const [cfg, setCfg]             = useState(DEFAULT_CONFIG);
+  // ── Initialise from localStorage if a save exists ───────────────────────────
+  const saved = loadSave();
+  // Always apply latest DEFAULT_CONFIG fairness rules (ignore stale localStorage copy)
+  const [cfg, setCfg]             = useState(saved?.cfg ? { ...saved.cfg, fairness: DEFAULT_CONFIG.fairness } : DEFAULT_CONFIG);
   const [showSettings, setShowSettings] = useState(false);
-  const [tickets, setTickets]     = useState([]);
-  const [winnersSet, setWinnersSet] = useState(new Set());
-  const [winners, setWinners]     = useState([]);
+  const [tickets, setTickets]     = useState(saved?.tickets ?? []);
+  const [winnersSet, setWinnersSet] = useState(new Set(saved?.winnersArr ?? []));
+  const [winners, setWinners]     = useState(saved?.winners ?? []);
   const [running, setRunning]     = useState(false);
   const [pendingWinner, setPendingWinner] = useState(null);
   const [currentWinner, setCurrentWinner] = useState(null);
@@ -628,7 +656,10 @@ export default function RaffleApp() {
   const [countdown, setCountdown]       = useState(null);    // 3,2,1,null
   const [showOverlay, setShowOverlay]   = useState(false);   // full-screen winner overlay
   const [confetti, setConfetti]         = useState([]);      // confetti particles
+  const [saveMsg, setSaveMsg]           = useState("");       // toast message
   const fileRef    = useRef(null);
+  const saveFileRef = useRef(null);
+  const loadFileRef = useRef(null);
   const tScrollRef = useRef(null);
   const nScrollRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -640,6 +671,57 @@ export default function RaffleApp() {
     return audioCtxRef.current;
   };
   const set = k => v => setCfg(c => ({ ...c, [k]: v }));
+
+  // ── Autosave to localStorage whenever key state changes ──────────────────────
+  useEffect(() => {
+    writeSave({ cfg, tickets, winners, winnersArr: [...winnersSet] });
+  }, [cfg, tickets, winners, winnersSet]);
+
+  // ── Manual save to .json file ─────────────────────────────────────────────────
+  const handleSaveFile = () => {
+    const data = { cfg, tickets, winners, winnersArr: [...winnersSet] };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `raffle_save_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setSaveMsg("✅ Saved!");
+    setTimeout(() => setSaveMsg(""), 2500);
+  };
+
+  // ── Load from .json file ──────────────────────────────────────────────────────
+  const handleLoadFile = e => {
+    const file = e.target.files[0]; if (!file) return; e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.cfg)       setCfg(data.cfg);
+        if (data.tickets)   setTickets(data.tickets);
+        if (data.winners)   setWinners(data.winners);
+        if (data.winnersArr) setWinnersSet(new Set(data.winnersArr));
+        setSaveMsg("✅ Loaded!");
+        setTimeout(() => setSaveMsg(""), 2500);
+      } catch {
+        setSaveMsg("❌ Invalid file");
+        setTimeout(() => setSaveMsg(""), 2500);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // ── Clear draw data (keep config) ─────────────────────────────────────────────
+  const handleClearSave = () => {
+    if (!window.confirm("Clear all tickets and winners? Config/settings are kept.")) return;
+    setTickets([]);
+    setWinners([]);
+    setWinnersSet(new Set());
+    setSaveMsg("🗑️ Cleared");
+    setTimeout(() => setSaveMsg(""), 2500);
+  };
+
 
   // Eligible tickets = tickets whose person hasn't won yet
   const eligibleTickets = useMemo(
@@ -715,13 +797,23 @@ export default function RaffleApp() {
     setRunning(false);
     setCurrentWinner(pendingWinner);
     setWinnersSet(prev => new Set([...prev, pendingWinner.name]));
-    setWinners(prev => [...prev, {
-      round: prev.length + 1,
-      name: pendingWinner.name,
-      ticketId: pendingWinner.ticketId,
-      ticketCount: ticketCountByName[pendingWinner.name] || 1,
-      time: new Date().toLocaleTimeString(),
-    }]);
+    setWinners(prev => {
+      const nextRound = prev.length + 1;
+      const prizeObj = cfg.prizes && cfg.prizes.length > 0
+        ? (cfg.prizes[nextRound - 1] || cfg.prizes[cfg.prizes.length - 1])
+        : null;
+      const prize  = prizeObj ? (typeof prizeObj === "string" ? prizeObj : prizeObj.label)  : "";
+      const prizeImages = prizeObj && typeof prizeObj === "object" ? (prizeObj.images || []) : [];
+      return [...prev, {
+        round: nextRound,
+        name: pendingWinner.name,
+        ticketId: pendingWinner.ticketId,
+        ticketCount: ticketCountByName[pendingWinner.name] || 1,
+        time: new Date().toLocaleTimeString(),
+        prize,
+        prizeImages,
+      }];
+    });
     // Show full-screen overlay + confetti immediately
     setShowOverlay(true);
     launchConfetti();
@@ -759,7 +851,7 @@ export default function RaffleApp() {
 
   // Export winners to CSV
   const exportCSV = () => {
-    const rows = [["Round","Winner","Ticket ID","Time"], ...winners.map(w => [w.round, w.name, w.ticketId, w.time])];
+    const rows = [["Round","Prize","Winner","Ticket ID","Time"], ...winners.map(w => [w.round, w.prize || "", w.name, w.ticketId, w.time])];
     const csv  = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
@@ -826,17 +918,36 @@ export default function RaffleApp() {
                 inputStyle={{ fontSize: 12, width: 280 }} />
             </div>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <button onClick={() => fileRef.current.click()}
               style={{ ...btn, background: "rgba(255,255,255,0.18)", border: "1.5px solid #fff8", fontSize: 13, padding: "9px 18px" }}>
               📂 Load Excel
+            </button>
+            {/* Save / Load / Clear */}
+            <button onClick={handleSaveFile}
+              style={{ ...btn, background: "rgba(255,255,255,0.18)", border: "1.5px solid #fff8", fontSize: 13, padding: "9px 18px" }}>
+              💾 Save
+            </button>
+            <button onClick={() => loadFileRef.current.click()}
+              style={{ ...btn, background: "rgba(255,255,255,0.18)", border: "1.5px solid #fff8", fontSize: 13, padding: "9px 18px" }}>
+              📥 Load Save
+            </button>
+            <button onClick={handleClearSave}
+              style={{ ...btn, background: "rgba(255,100,100,0.25)", border: "1.5px solid #fff8", fontSize: 13, padding: "9px 18px" }}>
+              🗑️ Clear
             </button>
             <button onClick={() => setShowSettings(!showSettings)}
               style={{ ...btn, background: showSettings ? "#fff" : "rgba(255,255,255,0.12)",
                 color: showSettings ? cfg.accentColor : "#fff", border: "1.5px solid #fff8", fontSize: 13, padding: "9px 18px" }}>
               ✏️ Customize
             </button>
+            {saveMsg && (
+              <span style={{ color: "#fff", fontWeight: 700, fontSize: 13, background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: "6px 12px" }}>
+                {saveMsg}
+              </span>
+            )}
             <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: "none" }} />
+            <input ref={loadFileRef} type="file" accept=".json" onChange={handleLoadFile} style={{ display: "none" }} />
           </div>
         </div>
       </div>
@@ -970,6 +1081,68 @@ export default function RaffleApp() {
               </button>
             </div>
 
+            {/* 🎁 Prizes per Round — fully editable with poster images */}
+            <div style={{ gridColumn: "1 / -1" }}>
+              <div style={{ fontWeight: 700, fontSize: 11, color: "#5a8fa8", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>🎁 Prizes per Round</div>
+              <div style={{ fontSize: 11, color: "#5a8fa8", marginBottom: 10 }}>
+                Each entry corresponds to one draw round. You can add up to 2 poster images per prize — they'll appear on the winner overlay.
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {(cfg.prizes || []).map((prize, i) => {
+                  const p = typeof prize === "string" ? { label: prize, images: [] } : prize;
+                  const updatePrize = (updated) => setCfg(c => ({
+                    ...c,
+                    prizes: (c.prizes || []).map((x, j) => j === i ? updated : (typeof x === "string" ? { label: x, images: [] } : x))
+                  }));
+                  return (
+                    <div key={i} style={{ background: "#f0f9ff", borderRadius: 10, padding: "10px 12px", borderLeft: `3px solid ${cfg.strikeColor}` }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, color: "#5a8fa8", minWidth: 24, fontWeight: 700 }}>R{i + 1}</span>
+                        <input
+                          value={p.label}
+                          placeholder={`Round ${i + 1} prize…`}
+                          onChange={e => updatePrize({ ...p, label: e.target.value })}
+                          style={{ ...inp, flex: 1, fontSize: 12, padding: "5px 10px" }} />
+                        <button
+                          onClick={() => setCfg(c => ({ ...c, prizes: (c.prizes || []).filter((_, j) => j !== i) }))}
+                          style={{ border: "none", background: "none", color: "#f87171", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+                      </div>
+                      {/* Poster images */}
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        {(p.images || []).map((img, imgIdx) => (
+                          <div key={imgIdx} style={{ position: "relative" }}>
+                            <img src={img} alt={`Poster ${imgIdx + 1}`}
+                              style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: `2px solid ${cfg.accentColor}44` }} />
+                            <button
+                              onClick={() => updatePrize({ ...p, images: p.images.filter((_, k) => k !== imgIdx) })}
+                              style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "#f87171", color: "#fff", border: "none", cursor: "pointer", fontSize: 11, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>×</button>
+                          </div>
+                        ))}
+                        {(p.images || []).length < 2 && (
+                          <label style={{ width: 64, height: 64, borderRadius: 8, border: `2px dashed ${cfg.accentColor}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: cfg.accentColor, fontSize: 10, fontWeight: 600, gap: 2 }}>
+                            <span style={{ fontSize: 20 }}>📷</span>
+                            Add Poster
+                            <input type="file" accept="image/*" style={{ display: "none" }}
+                              onChange={e => {
+                                const file = e.target.files[0]; if (!file) return; e.target.value = "";
+                                const reader = new FileReader();
+                                reader.onload = ev => updatePrize({ ...p, images: [...(p.images || []), ev.target.result] });
+                                reader.readAsDataURL(file);
+                              }} />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setCfg(c => ({ ...c, prizes: [...(c.prizes || []), { label: `🏅 Prize ${(c.prizes || []).length + 1}`, images: [] }] }))}
+                style={{ ...btn, marginTop: 10, background: "#f0f9ff", color: cfg.accentColor, border: "1px solid #b3ddf2", fontSize: 12, padding: "6px 14px", fontWeight: 600 }}>
+                + Add Prize
+              </button>
+            </div>
+
           </div>
           <button onClick={() => setCfg(DEFAULT_CONFIG)}
             style={{ marginTop: 16, ...btn, background: "#f1f5f9", color: "#5a8fa8", border: "1px solid #b3ddf2", fontSize: 12, padding: "8px 18px", fontWeight: 600 }}>
@@ -1055,6 +1228,7 @@ export default function RaffleApp() {
                         <div key={i} style={{ flexShrink: 0, textAlign: "center" }}>
                           <div style={{ fontWeight: 700, fontSize: 13, color: "#fff" }}>{w.name}</div>
                           <div style={{ fontSize: 11, color: cfg.accentColor }}>R{w.round} · {w.ticketId}</div>
+                          {w.prize && <div style={{ fontSize: 10, color: cfg.strikeColor, fontWeight: 700 }}>{w.prize}</div>}
                         </div>
                       ))}
                     </div>
@@ -1077,6 +1251,11 @@ export default function RaffleApp() {
                     background: "linear-gradient(135deg,#e8f6fd,#fff)", animation: "popIn 0.45s cubic-bezier(0.34,1.56,0.64,1)" }}>
                     <img src={LOGO_B64} alt="IYG" style={{ width: 46, height: 46, borderRadius: "50%", margin: "0 auto 8px", display: "block", border: `3px solid ${cfg.accentColor}` }} />
                     <div style={{ color: "#5a8fa8", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Round {winners.length} Winner</div>
+                    {winners.length > 0 && winners[winners.length - 1]?.prize && (
+                      <div style={{ display: "inline-block", background: cfg.strikeColor, color: "#7c5a00", borderRadius: 12, padding: "3px 12px", fontWeight: 800, fontSize: 12, marginBottom: 6 }}>
+                        {winners[winners.length - 1].prize}
+                      </div>
+                    )}
                     <div style={{ fontWeight: 900, fontSize: 17, color: cfg.accentDark, marginBottom: 4, wordBreak: "break-word" }}>{currentWinner.name}</div>
                     <div style={{ display: "inline-block", ...tag(cfg.accentColor), fontSize: 13, padding: "3px 12px", marginBottom: 4 }}>🎟 {currentWinner.ticketId}</div>
                     <div style={{ fontSize: 11, color: "#5a8fa8", marginTop: 6 }}>✅ Excluded from future draws</div>
@@ -1270,6 +1449,7 @@ export default function RaffleApp() {
                   <tr style={{ borderBottom: "2px solid #b3ddf2" }}>
                     {[
                       cfg.labels.winnerColRound  || "Round",
+                      "Prize",
                       cfg.labels.winnerColName   || "Winner",
                       cfg.labels.winnerColTicket || "Winning Ticket",
                       cfg.labels.winnerColTime   || "Time",
@@ -1282,6 +1462,16 @@ export default function RaffleApp() {
                   {winners.map((w, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid #e0f0fb" }}>
                       <td style={{ padding: "10px 12px", color: cfg.accentColor, fontWeight: 700 }}>#{w.round}</td>
+                      <td style={{ padding: "10px 12px" }}>
+                        {w.prize ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{ background: cfg.strikeColor + "30", color: "#7c5a00", borderRadius: 6, padding: "2px 9px", fontSize: 12, fontWeight: 700 }}>{w.prize}</span>
+                            {(w.prizeImages || []).map((img, idx) => (
+                              <img key={idx} src={img} alt="" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4, border: `1px solid ${cfg.accentColor}44` }} />
+                            ))}
+                          </div>
+                        ) : <span style={{ color: "#b3ddf2" }}>—</span>}
+                      </td>
                       <td style={{ padding: "10px 12px", fontWeight: 600 }}>{w.name}</td>
                       <td style={{ padding: "10px 12px" }}><span style={tag(cfg.accentColor)}>🎟 {w.ticketId}</span></td>
                       <td style={{ padding: "10px 12px", color: "#5a8fa8" }}>{w.time}</td>
@@ -1332,6 +1522,24 @@ export default function RaffleApp() {
             <div style={{ fontSize: 13, letterSpacing: 3, textTransform: "uppercase", color: "#5a8fa8", marginBottom: 8 }}>
               {(cfg.labels.overlayRoundLabel || "🏆 ROUND {n} WINNER").replace("{n}", winners.length)}
             </div>
+
+            {/* Prize badge + poster images */}
+            {winners.length > 0 && winners[winners.length - 1]?.prize && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "inline-block", background: cfg.strikeColor, color: "#7c5a00", borderRadius: 20, padding: "6px 20px", fontWeight: 800, fontSize: 16, letterSpacing: 1, marginBottom: winners[winners.length - 1]?.prizeImages?.length ? 10 : 0 }}>
+                  {winners[winners.length - 1].prize}
+                </div>
+                {winners[winners.length - 1]?.prizeImages?.length > 0 && (
+                  <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                    {winners[winners.length - 1].prizeImages.map((img, idx) => (
+                      <img key={idx} src={img} alt={`Prize poster ${idx + 1}`}
+                        style={{ height: 140, maxWidth: 200, objectFit: "contain", borderRadius: 12,
+                          boxShadow: `0 4px 24px ${cfg.accentColor}66`, border: `2px solid ${cfg.accentColor}44` }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ fontSize: 42, fontWeight: 900, color: "#0a2540", lineHeight: 1.15,
               marginBottom: 20, wordBreak: "break-word",
