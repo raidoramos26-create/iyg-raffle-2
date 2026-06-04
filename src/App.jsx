@@ -70,12 +70,12 @@ const DEFAULT_CONFIG = {
   ],
   // Prizes per round — each prize has a label and up to 2 poster images (base64)
   prizes: [
-    { label: "SB Vouchers",                images: [] },
-    { label: "Mini Speaker",               images: [] },
-    { label: "Camera",                     images: [] },
-    { label: "Moisturizer",                images: [] },
-    { label: "100P worth of Regular Load", images: [] },
-    { label: "3pcs 1.5L Soft Drinks",      images: [] },
+    { label: "SB Vouchers - MAIN",                images: [] },
+    { label: "Mini Speaker - MAIN",               images: [] },
+    { label: "Camera - MAIN",                     images: [] },
+    { label: "Moisturizer - CONSOLATION",                images: [] },
+    { label: "100P Regular Load - CONSOLATION", images: [] },
+    { label: "3pcs 1.5L Soft Drinks - CONSOLATION",      images: [] },
   ],
 };
 
@@ -1081,7 +1081,7 @@ export default function RaffleApp() {
               </button>
             </div>
 
-            {/* 🎁 Prizes per Round — fully editable with poster images */}
+            {/* 🎁 Prizes per Round (R1,R2,R3 - MAIN PRIZES / R4,R5,R6 - CONSOLATION PRIZES — fully editable with poster images */}
             <div style={{ gridColumn: "1 / -1" }}>
               <div style={{ fontWeight: 700, fontSize: 11, color: "#5a8fa8", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>🎁 Prizes per Round</div>
               <div style={{ fontSize: 11, color: "#5a8fa8", marginBottom: 10 }}>
