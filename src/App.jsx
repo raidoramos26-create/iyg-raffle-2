@@ -72,7 +72,7 @@ const DEFAULT_CONFIG = {
   prizes: [
     { label: "SB Vouchers - MAIN",                images: [] },
     { label: "Mini Speaker - MAIN",               images: [] },
-    { label: "Camera - MAIN",                     images: [] },
+    { label: "Digital Camera - MAIN",                     images: [] },
     { label: "Moisturizer - CONSOLATION",                images: [] },
     { label: "100P Regular Load - CONSOLATION", images: [] },
     { label: "3pcs 1.5L Soft Drinks - CONSOLATION",      images: [] },
