@@ -1164,6 +1164,7 @@ export default function RaffleApp() {
           ["tickets", `${cfg.labels.tabTickets || "🎟 Tickets"} (${tickets.length.toLocaleString()})`],
           ["names",   `${cfg.labels.tabParticipants || "👥 Participants"} (${uniqueNames.length.toLocaleString()})`],
           ["winners", `${cfg.labels.tabWinners || "🏆 Winners"} (${winners.length})`],
+          ["prizes",  "🎁 Prizes"],
           ["log",     cfg.labels.tabLog     || "📋 Log"],
         ].map(([tab, label]) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
@@ -1280,10 +1281,29 @@ export default function RaffleApp() {
                   ))}
                 </div>
 
+                {/* Prizes per Round */}
+                <div style={{ ...card, background: "#fffbf0", border: `1px solid ${cfg.strikeColor}44` }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: cfg.accentColor, marginBottom: 10 }}>🎁 Prizes per Round</div>
+                  {(cfg.prizes || []).map((prize, i) => {
+                    const p = typeof prize === "string" ? { label: prize, images: [] } : prize;
+                    const isWon = winners.some(w => w.round === i + 1);
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid #f0e8c8", opacity: isWon ? 0.5 : 1 }}>
+                        <span style={{ fontWeight: 700, fontSize: 11, color: cfg.accentColor, minWidth: 22 }}>R{i + 1}</span>
+                        {(p.images || []).length > 0 && (
+                          <img src={p.images[0]} alt="" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: `1px solid ${cfg.accentColor}33` }} />
+                        )}
+                        <span style={{ fontSize: 12, color: "#0a2540", fontWeight: 600, flex: 1 }}>{p.label}</span>
+                        {isWon && <span style={{ fontSize: 11, color: "#22c55e", fontWeight: 700 }}>✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Fairness */}
                 <div style={{ ...card, background: "#e8f6fd", border: "1px solid #b3ddf2" }}>
                   <div style={{ fontWeight: 700, fontSize: 12, color: cfg.accentColor, marginBottom: 8 }}>{cfg.labels.fairnessTitle || "🔍 Rules"}</div>
-                  <div style={{ fontSize: 12, color: "#5a8fa8", lineHeight: 2 }}>
+                  <div style={{ fontSize: 12, color: "#5a8fa8", lineHeight: 2, textAlign: "left" }}>
                     {cfg.fairness.map((line, i) => <div key={i}>• {line}</div>)}
                   </div>
                 </div>
@@ -1482,6 +1502,58 @@ export default function RaffleApp() {
             )}
           </div>
         )}
+
+        {/* ══ PRIZES TAB ═════════════════════════════════════════════════════ */}
+        {activeTab === "prizes" && (
+          <div style={{ ...card, borderRadius: "0 16px 16px 16px" }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>🎁 Prizes per Round</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+              {(cfg.prizes || []).map((prize, i) => {
+                const p = typeof prize === "string" ? { label: prize, images: [] } : prize;
+                const winner = winners.find(w => w.round === i + 1);
+                return (
+                  <div key={i} style={{
+                    borderRadius: 14, border: `2px solid ${winner ? "#22c55e44" : cfg.accentColor + "33"}`,
+                    background: winner ? "#f0fdf4" : "#f8fcff",
+                    padding: 16, display: "flex", flexDirection: "column", gap: 10,
+                    opacity: winner ? 0.75 : 1,
+                    boxShadow: winner ? "none" : `0 2px 12px ${cfg.accentColor}14`
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ background: winner ? "#22c55e" : cfg.accentColor, color: "#fff", borderRadius: 8, padding: "3px 10px", fontWeight: 800, fontSize: 12 }}>
+                        R{i + 1}
+                      </span>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: "#0a2540", flex: 1 }}>{p.label || `Prize ${i + 1}`}</span>
+                      {winner && <span style={{ fontSize: 16 }}>✅</span>}
+                    </div>
+                    {(p.images || []).length > 0 ? (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {p.images.map((img, idx) => (
+                          <img key={idx} src={img} alt={`Poster ${idx + 1}`}
+                            style={{ flex: 1, minWidth: 80, maxWidth: "100%", height: 120, objectFit: "cover", borderRadius: 10, border: `1px solid ${cfg.accentColor}22` }} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ height: 80, borderRadius: 10, border: `2px dashed ${cfg.accentColor}33`, display: "flex", alignItems: "center", justifyContent: "center", color: "#b3ddf2", fontSize: 12 }}>
+                        No poster uploaded
+                      </div>
+                    )}
+                    {winner ? (
+                      <div style={{ background: "#dcfce7", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
+                        <div style={{ fontWeight: 700, color: "#16a34a", marginBottom: 2 }}>🏆 Winner</div>
+                        <div style={{ color: "#0a2540", fontWeight: 600 }}>{winner.name}</div>
+                        <div style={{ color: "#5a8fa8" }}>🎟 {winner.ticketId} · {winner.time}</div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: "#5a8fa8", textAlign: "center" }}>Not yet drawn</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* ══ FULL-SCREEN WINNER OVERLAY ══════════════════════════════════════ */}
