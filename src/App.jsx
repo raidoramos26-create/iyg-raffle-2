@@ -68,14 +68,15 @@ const DEFAULT_CONFIG = {
     "Draw Sequence: 3 Main Prizes then 3 Consolation prizes so stay till the end!",
     "We will contact the winners after our live event",
   ],
+  hosts: [{ photo: null, name: "" }, { photo: null, name: "" }],
   // Prizes per round — each prize has a label and up to 2 poster images (base64)
   prizes: [
-    { label: "SB Vouchers - MAIN",                images: [] },
-    { label: "Mini Speaker - MAIN",               images: [] },
-    { label: "Digital Camera - MAIN",                     images: [] },
-    { label: "Moisturizer - CONSOLATION",                images: [] },
+    { label: "SB Vouchers - MAIN",              images: [] },
+    { label: "Mini Speaker - MAIN",             images: [] },
+    { label: "Camera - MAIN",                   images: [] },
+    { label: "Moisturizer - CONSOLATION",       images: [] },
     { label: "100P Regular Load - CONSOLATION", images: [] },
-    { label: "3pcs 1.5L Soft Drinks - CONSOLATION",      images: [] },
+    { label: "3pcs 1.5L Soft Drinks - CONSOLATION", images: [] },
   ],
 };
 
@@ -637,8 +638,8 @@ function writeSave(data) {
 export default function RaffleApp() {
   // ── Initialise from localStorage if a save exists ───────────────────────────
   const saved = loadSave();
-  // Always apply latest DEFAULT_CONFIG fairness rules (ignore stale localStorage copy)
-  const [cfg, setCfg]             = useState(saved?.cfg ? { ...saved.cfg, fairness: DEFAULT_CONFIG.fairness } : DEFAULT_CONFIG);
+  // Always use latest DEFAULT_CONFIG fairness rules and prize labels (don't restore stale ones from localStorage)
+  const [cfg, setCfg]             = useState(saved?.cfg ? { ...saved.cfg, fairness: DEFAULT_CONFIG.fairness, prizes: saved.cfg.prizes ?? DEFAULT_CONFIG.prizes } : DEFAULT_CONFIG);
   const [showSettings, setShowSettings] = useState(false);
   const [tickets, setTickets]     = useState(saved?.tickets ?? []);
   const [winnersSet, setWinnersSet] = useState(new Set(saved?.winnersArr ?? []));
@@ -966,7 +967,7 @@ export default function RaffleApp() {
             {/* Text labels */}
             <div>
               <div style={{ fontWeight: 700, fontSize: 11, color: "#5a8fa8", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>Text Labels</div>
-              {[["Event Title","eventTitle"],["Subtitle","eventSubtitle"],["Draw Button","drawBtnLabel"]].map(([label, key]) => (
+              {[["Event Title","eventTitle"],["Subtitle","eventSubtitle"],["Draw Button","drawBtnLabel"],["Host Name (shown under photo)","hostName"]].map(([label, key]) => (
                 <div key={key} style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 11, color: "#5a8fa8", marginBottom: 3 }}>{label}</div>
                   <input value={cfg[key]} onChange={e => set(key)(e.target.value)}
@@ -1081,7 +1082,7 @@ export default function RaffleApp() {
               </button>
             </div>
 
-            {/* 🎁 Prizes per Round (R1,R2,R3 - MAIN PRIZES / R4,R5,R6 - CONSOLATION PRIZES — fully editable with poster images */}
+            {/* 🎁 Prizes per Round — fully editable with poster images */}
             <div style={{ gridColumn: "1 / -1" }}>
               <div style={{ fontWeight: 700, fontSize: 11, color: "#5a8fa8", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>🎁 Prizes per Round</div>
               <div style={{ fontSize: 11, color: "#5a8fa8", marginBottom: 10 }}>
@@ -1241,6 +1242,52 @@ export default function RaffleApp() {
                     🎉 All participants have won! Reset to run another round.
                   </div>
                 )}
+
+                {/* Host photos — up to 2 hosts side by side */}
+                <div style={{ ...card, padding: 12 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#5a8fa8", marginBottom: 10, textAlign: "center", letterSpacing: 1, textTransform: "uppercase" }}>🎤 Hosts</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    {[0, 1].map(idx => {
+                      const hosts = cfg.hosts || [{ photo: null, name: "" }, { photo: null, name: "" }];
+                      const host = hosts[idx] || { photo: null, name: "" };
+                      const updateHost = (updated) => setCfg(c => {
+                        const h = [...(c.hosts || [{ photo: null, name: "" }, { photo: null, name: "" }])];
+                        h[idx] = updated;
+                        return { ...c, hosts: h };
+                      });
+                      return (
+                        <div key={idx} style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${cfg.accentColor}22`, background: "#f8fcff" }}>
+                          {host.photo ? (
+                            <div style={{ position: "relative" }}>
+                              <img src={host.photo} alt={`Host ${idx + 1}`}
+                                style={{ width: "100%", height: 220, objectFit: "cover", display: "block" }} />
+                              <button onClick={() => updateHost({ ...host, photo: null })}
+                                style={{ position: "absolute", top: 6, right: 6, background: "#f87171", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>×</button>
+                            </div>
+                          ) : (
+                            <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, height: 220, cursor: "pointer", color: "#b3ddf2" }}>
+                              <span style={{ fontSize: 28 }}>📷</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "#5a8fa8" }}>Host {idx + 1}</span>
+                              <input type="file" accept="image/*" style={{ display: "none" }}
+                                onChange={e => {
+                                  const file = e.target.files[0]; if (!file) return; e.target.value = "";
+                                  const reader = new FileReader();
+                                  reader.onload = ev => updateHost({ ...host, photo: ev.target.result });
+                                  reader.readAsDataURL(file);
+                                }} />
+                            </label>
+                          )}
+                          <input
+                            value={host.name || ""}
+                            placeholder={`Host ${idx + 1} name…`}
+                            onChange={e => updateHost({ ...host, name: e.target.value })}
+                            style={{ width: "100%", border: "none", borderTop: `1px solid ${cfg.accentColor}22`, padding: "6px 8px", fontSize: 12, fontWeight: 600, color: cfg.accentColor, textAlign: "center", background: "transparent", outline: "none", boxSizing: "border-box" }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
               </div>
 
               {/* Right panel */}
