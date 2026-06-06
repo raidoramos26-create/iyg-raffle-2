@@ -679,6 +679,16 @@ export default function RaffleApp() {
     writeSave({ cfg, tickets, winners, winnersArr: [...winnersSet] });
   }, [cfg, tickets, winners, winnersSet]);
 
+  // Fill browser background to eliminate black bars in fullscreen
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "raffle-bg-fill";
+    style.textContent = `html, body { margin: 0; padding: 0; background: ${cfg.canvasBg2}; width: 100%; overflow-x: hidden; }`;
+    const existing = document.getElementById("raffle-bg-fill");
+    if (existing) existing.remove();
+    document.head.appendChild(style);
+  }, [cfg.canvasBg1, cfg.canvasBg2]);
+
   // ── Manual save to .json file ─────────────────────────────────────────────────
   const handleSaveFile = () => {
     const data = { cfg, tickets, winners, winnersArr: [...winnersSet] };
@@ -902,8 +912,8 @@ export default function RaffleApp() {
                  background: "#f0f9ff", color: "#0a2540", fontSize: 13 };
 
   return (
-    <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, ${cfg.canvasBg1} 0%, ${cfg.canvasBg2} 100%)`,
-      color: "#0a2540", fontFamily: "'Segoe UI', system-ui, sans-serif", paddingBottom: 48 }}>
+    <div style={{ minHeight: "100vh", width: "100%", background: `linear-gradient(180deg, ${cfg.canvasBg1} 0%, ${cfg.canvasBg2} 100%)`,
+      color: "#0a2540", fontFamily: "'Segoe UI', system-ui, sans-serif", paddingBottom: 48, boxSizing: "border-box" }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={{ background: cfg.headerBg, padding: "0 24px", boxShadow: "0 4px 20px #0003" }}>
