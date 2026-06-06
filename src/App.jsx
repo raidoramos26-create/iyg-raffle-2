@@ -916,7 +916,7 @@ export default function RaffleApp() {
       color: "#0a2540", fontFamily: "'Segoe UI', system-ui, sans-serif", paddingBottom: 48, boxSizing: "border-box" }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div style={{ background: cfg.headerBg, padding: "0 24px", boxShadow: "0 4px 20px #0003" }}>
+      <div style={{ background: cfg.headerBg, padding: "0 16px", boxShadow: "0 4px 20px #0003" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "10px 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <img src={LOGO_B64} alt="Logo"
@@ -1170,7 +1170,7 @@ export default function RaffleApp() {
       )}
 
       {/* ── Tabs ────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", gap: 2, padding: "4px 24px 0", overflowX: "auto" }}>
+      <div style={{ display: "flex", gap: 2, padding: "4px 0 0", overflowX: "auto" }}>
         {[
           ["draw",    cfg.labels.tabDraw    || "⚓ Live Draw"],
           ["tickets", `${cfg.labels.tabTickets || "🎟 Tickets"} (${tickets.length.toLocaleString()})`],
@@ -1191,11 +1191,11 @@ export default function RaffleApp() {
         ))}
       </div>
 
-      <div style={{ padding: "0 24px 24px", minHeight: "calc(100vh - 120px)", boxSizing: "border-box" }}>
+      <div style={{ padding: "0 0 24px", minHeight: "calc(100vh - 120px)", boxSizing: "border-box" }}>
 
         {/* ══ DRAW TAB ════════════════════════════════════════════════ */}
         {activeTab === "draw" && (
-          <div style={{ background: "#fff", borderRadius: "0 16px 16px 16px", padding: 24, boxShadow: "0 4px 24px #29abe218", position: "relative", minHeight: "calc(100vh - 160px)", boxSizing: "border-box" }}>
+          <div style={{ background: "#fff", borderRadius: 0, padding: "20px 20px", boxShadow: "none", position: "relative", minHeight: "calc(100vh - 140px)", boxSizing: "border-box" }}>
 
             {/* ── Countdown overlay ── */}
             {countdown !== null && (
