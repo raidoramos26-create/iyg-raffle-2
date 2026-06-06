@@ -574,7 +574,7 @@ function RainCanvas({ running, winner, onDone, cfg, names, audioCtx }) {
   }, [running, winner, audioCtx]);
 
   return (
-    <canvas ref={cvs} width={700} height={400}
+    <canvas ref={cvs} width={700} height={520}
       style={{ display: "block", width: "100%", borderRadius: 18,
         background: `linear-gradient(170deg, ${cfg.canvasBg1} 60%, ${cfg.canvasBg2} 100%)`,
         border: "1.5px solid #b3ddf2", boxShadow: "0 4px 28px #29abe218" }} />
@@ -1191,11 +1191,11 @@ export default function RaffleApp() {
         ))}
       </div>
 
-      <div style={{ padding: "0 24px 24px" }}>
+      <div style={{ padding: "0 24px 24px", minHeight: "calc(100vh - 120px)", boxSizing: "border-box" }}>
 
         {/* ══ DRAW TAB ════════════════════════════════════════════════ */}
         {activeTab === "draw" && (
-          <div style={{ background: "#fff", borderRadius: "0 16px 16px 16px", padding: 24, boxShadow: "0 4px 24px #29abe218", position: "relative" }}>
+          <div style={{ background: "#fff", borderRadius: "0 16px 16px 16px", padding: 24, boxShadow: "0 4px 24px #29abe218", position: "relative", minHeight: "calc(100vh - 160px)", boxSizing: "border-box" }}>
 
             {/* ── Countdown overlay ── */}
             {countdown !== null && (
@@ -1210,8 +1210,8 @@ export default function RaffleApp() {
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 290px", gap: 24, alignItems: "start" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 290px", gap: 24, alignItems: "stretch", minHeight: "calc(100vh - 220px)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, height: "100%" }}>
 
                 <RainCanvas running={running} winner={pendingWinner} onDone={handleDone}
                   cfg={cfg} names={eligibleNames} audioCtx={audioCtxRef.current} />
@@ -1255,7 +1255,7 @@ export default function RaffleApp() {
                 )}
 
                 {/* Host photos — up to 2 hosts side by side */}
-                <div style={{ ...card, padding: 12 }}>
+                <div style={{ ...card, padding: 12, flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 12, color: "#5a8fa8", marginBottom: 10, textAlign: "center", letterSpacing: 1, textTransform: "uppercase" }}>🎤 Hosts</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     {[0, 1].map(idx => {
@@ -1271,7 +1271,7 @@ export default function RaffleApp() {
                           {host.photo ? (
                             <div style={{ position: "relative", cursor: "zoom-in" }} onClick={() => setHostZoom({ photo: host.photo, name: host.name })}>
                               <img src={host.photo} alt={`Host ${idx + 1}`}
-                                style={{ width: "100%", height: 220, objectFit: "cover", display: "block" }} />
+                                style={{ width: "100%", height: 280, objectFit: "cover", display: "block" }} />
                               <div className="host-hover-overlay" style={{ position: "absolute", inset: 0, background: "rgba(10,37,64,0.45)", opacity: 0, transition: "opacity 0.2s",
                                 display: "flex", alignItems: "center", justifyContent: "center" }}
                                 onMouseEnter={e => e.currentTarget.style.opacity = 1}
@@ -1282,7 +1282,7 @@ export default function RaffleApp() {
                                 style={{ position: "absolute", top: 6, right: 6, background: "#f87171", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}>×</button>
                             </div>
                           ) : (
-                            <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, height: 220, cursor: "pointer", color: "#b3ddf2" }}>
+                            <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, height: 280, cursor: "pointer", color: "#b3ddf2" }}>
                               <span style={{ fontSize: 28 }}>📷</span>
                               <span style={{ fontSize: 11, fontWeight: 600, color: "#5a8fa8" }}>Host {idx + 1}</span>
                               <input type="file" accept="image/*" style={{ display: "none" }}
@@ -1308,7 +1308,7 @@ export default function RaffleApp() {
               </div>
 
               {/* Right panel */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 12, alignSelf: "start" }}>
 
                 {/* Winner card */}
                 {currentWinner && !running && (
