@@ -639,7 +639,7 @@ export default function RaffleApp() {
   // ── Initialise from localStorage if a save exists ───────────────────────────
   const saved = loadSave();
   // Always use latest DEFAULT_CONFIG fairness rules and prize labels (don't restore stale ones from localStorage)
-  const [cfg, setCfg]             = useState(saved?.cfg ? { ...saved.cfg, fairness: DEFAULT_CONFIG.fairness, prizes: saved.cfg.prizes ?? DEFAULT_CONFIG.prizes } : DEFAULT_CONFIG);
+  const [cfg, setCfg]             = useState(saved?.cfg ? { ...saved.cfg, fairness: DEFAULT_CONFIG.fairness, prizes: DEFAULT_CONFIG.prizes, hosts: saved.cfg.hosts ?? DEFAULT_CONFIG.hosts } : DEFAULT_CONFIG);
   const [showSettings, setShowSettings] = useState(false);
   const [tickets, setTickets]     = useState(saved?.tickets ?? []);
   const [winnersSet, setWinnersSet] = useState(new Set(saved?.winnersArr ?? []));
@@ -658,6 +658,7 @@ export default function RaffleApp() {
   const [showOverlay, setShowOverlay]   = useState(false);   // full-screen winner overlay
   const [confetti, setConfetti]         = useState([]);      // confetti particles
   const [saveMsg, setSaveMsg]           = useState("");       // toast message
+  const [hostZoom, setHostZoom]         = useState(null);     // zoomed host { photo, name }
   const fileRef    = useRef(null);
   const saveFileRef = useRef(null);
   const loadFileRef = useRef(null);
@@ -1258,11 +1259,17 @@ export default function RaffleApp() {
                       return (
                         <div key={idx} style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${cfg.accentColor}22`, background: "#f8fcff" }}>
                           {host.photo ? (
-                            <div style={{ position: "relative" }}>
+                            <div style={{ position: "relative", cursor: "zoom-in" }} onClick={() => setHostZoom({ photo: host.photo, name: host.name })}>
                               <img src={host.photo} alt={`Host ${idx + 1}`}
                                 style={{ width: "100%", height: 220, objectFit: "cover", display: "block" }} />
-                              <button onClick={() => updateHost({ ...host, photo: null })}
-                                style={{ position: "absolute", top: 6, right: 6, background: "#f87171", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>×</button>
+                              <div className="host-hover-overlay" style={{ position: "absolute", inset: 0, background: "rgba(10,37,64,0.45)", opacity: 0, transition: "opacity 0.2s",
+                                display: "flex", alignItems: "center", justifyContent: "center" }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                onMouseLeave={e => e.currentTarget.style.opacity = 0}>
+                                <span style={{ fontSize: 36, filter: "drop-shadow(0 2px 6px #000a)" }}>🔍</span>
+                              </div>
+                              <button onClick={e => { e.stopPropagation(); updateHost({ ...host, photo: null }); }}
+                                style={{ position: "absolute", top: 6, right: 6, background: "#f87171", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}>×</button>
                             </div>
                           ) : (
                             <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, height: 220, cursor: "pointer", color: "#b3ddf2" }}>
@@ -1603,7 +1610,36 @@ export default function RaffleApp() {
 
       </div>
 
-      {/* ══ FULL-SCREEN WINNER OVERLAY ══════════════════════════════════════ */}
+      {/* HOST ZOOM LIGHTBOX */}
+      {hostZoom && (
+        <div onClick={() => setHostZoom(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(10,37,64,0.88)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            cursor: "zoom-out", backdropFilter: "blur(6px)" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ position: "relative", maxWidth: "88vw", maxHeight: "82vh", borderRadius: 20,
+              overflow: "hidden", boxShadow: "0 8px 60px #000c" }}>
+            <img src={hostZoom.photo} alt={hostZoom.name}
+              style={{ maxWidth: "88vw", maxHeight: "78vh", objectFit: "contain", display: "block" }} />
+            {hostZoom.name && (
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0,
+                background: "linear-gradient(transparent, rgba(10,37,64,0.92))",
+                padding: "28px 24px 16px", textAlign: "center" }}>
+                <div style={{ color: "#fff", fontWeight: 800, fontSize: 22, letterSpacing: 1 }}>{hostZoom.name}</div>
+                <div style={{ color: "#b3ddf2", fontSize: 13, marginTop: 2 }}>🎤 Host</div>
+              </div>
+            )}
+            <button onClick={() => setHostZoom(null)}
+              style={{ position: "absolute", top: 12, right: 12, background: "#f87171", color: "#fff",
+                border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 18,
+                fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "center", boxShadow: "0 2px 8px #0006" }}>×</button>
+          </div>
+          <div style={{ color: "#b3ddf2", fontSize: 12, marginTop: 14, opacity: 0.7 }}>Click anywhere to close</div>
+        </div>
+      )}
+
+            {/* ══ FULL-SCREEN WINNER OVERLAY ══════════════════════════════════════ */}
       {showOverlay && currentWinner && (
         <div onClick={() => setShowOverlay(false)}
           style={{ position: "fixed", inset: 0, zIndex: 1000,
